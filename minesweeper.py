@@ -1,53 +1,42 @@
 import random
 
-GAME_OVER_TEXT = "You hit a mine! Game over."
-win_text = "Congratulations! You won!"
-INVALID_INPUT_TEXT = "Invalid input format. Try again."
 
-class minesweeper:
-    def __init__(self, size=8, num_mines=10):
-        self.s = size
-        self.m = num_mines
-        self.board = [[' ' for _ in range(size)] for _ in range(size)]
+class Minesweeper:
+    def __init__(self, board_size=8, number_of_mines=10):
+        self.board_size = board_size
+        self.number_of_mines = number_of_mines
+        self.board = [[' ' for _ in range(board_size)] for _ in range(board_size)]
         self.mines = set()
         self.revealed = set()
         self.flagged = set()
-        self.GameOver = False
+        self.game_over = False
         self.generate_mines()
         self.calculate_numbers()
 
     def generate_mines(self):
-        """Generates mines on the board."""
-        # if 0 <= x + dx < self.s and 0 <= y + dy < self.s:
-        #     if (x + dx, y + dy) in self.mines:
-        while len(self.mines) < self.m:
-            x, y = random.randint(0, self.s - 1), random.randint(0, self.s - 1)
+        while len(self.mines) < self.number_of_mines:
+            x, y = random.randint(0, self.board_size - 1), random.randint(0, self.board_size - 1)
             self.mines.add((x, y))
 
     def calculate_numbers(self):
         """Calculates the number of mines around each cell."""
-        for x in range(self.s):
-            for y in range(self.s):
+        for x in range(self.board_size):
+            for y in range(self.board_size):
                 if (x, y) in self.mines:
                     continue
-                cnt = 0  # Погана назва змінної (скорочення, яке важко зрозуміти)
+                counter = 0
                 for dx in [-1, 0, 1]:
                     for dy in [-1, 0, 1]:
-                        if 0 <= x + dx < self.s and 0 <= y + dy < self.s:
+                        if 0 <= x + dx < self.board_size and 0 <= y + dy < self.board_size:
                             if (x + dx, y + dy) in self.mines:
-                                cnt += 1
-                self.board[x][y] = str(cnt) if cnt > 0 else ' '
-
-
-    def calculateBordSize(self):
-        pass
-
+                                counter += 1
+                self.board[x][y] = str(counter) if counter > 0 else ' '
 
     def print_board(self):
         """Prints the current state of the board."""
-        print("  " + " ".join([str(i) for i in range(self.s)]))
-        for x in range(self.s):
-            row = [str(x)] + [self.board[x][y] if (x, y) in self.revealed else '?' for y in range(self.s)]
+        print("  " + " ".join([str(i) for i in range(self.board_size)]))
+        for x in range(self.board_size):
+            row = [str(x)] + [self.board[x][y] if (x, y) in self.revealed else '?' for y in range(self.board_size)]
             print(" ".join(row))
 
     def reveal(self, x, y):
@@ -55,19 +44,19 @@ class minesweeper:
         if (x, y) in self.revealed or (x, y) in self.flagged:
             return
         if (x, y) in self.mines:
-            self.GameOver = True
+            self.game_over = True
             return
         self.revealed.add((x, y))
         if self.board[x][y] == ' ':
             for dx in [-1, 0, 1]:
                 for dy in [-1, 0, 1]:
                     nx, ny = x + dx, y + dy
-                    if 0 <= nx < self.s and 0 <= ny < self.s:
+                    if 0 <= nx < self.board_size and 0 <= ny < self.board_size:
                         self.reveal(nx, ny)
 
     def is_valid_coordinate(self, x, y):
         """Checks if the coordinates are valid (extracting a complex check into a separate function)."""
-        return 0 <= x < self.s and 0 <= y < self.s
+        return 0 <= x < self.board_size and 0 <= y < self.board_size
 
     def flag(self, x, y):
         """Marks a cell as a potential mine."""
@@ -88,34 +77,40 @@ class minesweeper:
                     continue
                 return x, y
             except ValueError:
-                print(INVALID_INPUT_TEXT)
+                print('Invalid input format. Try again.')
                 continue
 
     def play(self):
         """Main game loop (too long function)."""
-        while not self.GameOver:
+        while not self.game_over:
             self.print_board()
             print("1. Reveal a cell")
             print("2. Flag a cell as a mine")
             action = input("Choose an action (1 or 2): ").strip()
 
             if action == "1":
-                x, y = self.get_input()
-                self.reveal(x, y)
-                if self.GameOver:
-                    print(GAME_OVER_TEXT)
-                    self.print_board()
-                    break
+                self.start_game()
+                break
             elif action == "2":
-                x, y = self.get_input()
-                self.flag(x, y)
+                self.view_statistics()
             else:
                 print("Invalid action. Try again.")
 
-            if len(self.revealed) == (self.s ** 2 - self.m):
-                print(win_text)
+            if len(self.revealed) == (self.board_size ** 2 - self.number_of_mines):
+                print('Congratulations! You won!')
                 self.print_board()
                 break
+
+    def start_game(self):
+        x, y = self.get_input()
+        self.reveal(x, y)
+        if self.game_over:
+            print('You hit a mine! Game over.')
+            self.print_board()
+
+    def view_statistics(self):
+        x, y = self.get_input()
+        self.flag(x, y)
 
 
 class GameStatistics:
@@ -153,7 +148,7 @@ class GameMenu:
             choice = input("Choose an option: ").strip()
 
             if choice == "1":
-                self.startGame()
+                self.start_game()
             elif choice == "2":
                 self.stats.print_statistics()
             elif choice == "3":
@@ -162,16 +157,10 @@ class GameMenu:
             else:
                 print("Invalid choice, please try again.")
 
-    def startGame(self):
+    def start_game(self):
         """Starts a new game."""
         size = int(input("Choose the board size (e.g., 8 for 8x8): ").strip())
         mines = int(input("Enter the number of mines: ").strip())
-        game = minesweeper(size, mines)
+        game = Minesweeper(size, mines)
         game.play()
-        self.stats.update_statistics(game.GameOver and len(game.revealed) == (game.s ** 2 - game.m))
-
-
-
-if __name__ == "__main__":
-    menu = GameMenu()
-    menu.display_menu()
+        self.stats.update_statistics(game.game_over and len(game.revealed) == (game.board_size ** 2 - game.number_of_mines))
