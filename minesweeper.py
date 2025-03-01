@@ -10,15 +10,18 @@ class Minesweeper:
         self.revealed = set()
         self.flagged = set()
         self.game_over = False
-        self.generate_mines()
-        self.calculate_numbers()
+        self._initialize_board()
 
-    def generate_mines(self):
+    def _initialize_board(self):
+        self._generate_mines()
+        self._calculate_numbers()
+
+    def _generate_mines(self):
         while len(self.mines) < self.number_of_mines:
             x, y = random.randint(0, self.board_size - 1), random.randint(0, self.board_size - 1)
             self.mines.add((x, y))
 
-    def calculate_numbers(self):
+    def _calculate_numbers(self):
         """Calculates the number of mines around each cell."""
         for x in range(self.board_size):
             for y in range(self.board_size):
@@ -31,6 +34,10 @@ class Minesweeper:
                             if (x + dx, y + dy) in self.mines:
                                 counter += 1
                 self.board[x][y] = str(counter) if counter > 0 else ' '
+
+    def _is_valid_coordinate(self, x, y):
+        """Checks if the coordinates are valid (extracting a complex check into a separate function)."""
+        return 0 <= x < self.board_size and 0 <= y < self.board_size
 
     def print_board(self):
         """Prints the current state of the board."""
@@ -54,25 +61,16 @@ class Minesweeper:
                     if 0 <= nx < self.board_size and 0 <= ny < self.board_size:
                         self.reveal(nx, ny)
 
-    def is_valid_coordinate(self, x, y):
-        """Checks if the coordinates are valid (extracting a complex check into a separate function)."""
-        return 0 <= x < self.board_size and 0 <= y < self.board_size
-
     def flag(self, x, y):
-        """Marks a cell as a potential mine."""
-        if (x, y) in self.revealed:
-            return
-        if (x, y) in self.flagged:
-            self.flagged.remove((x, y))
-        else:
-            self.flagged.add((x, y))
+        if (x, y) not in self.revealed:
+            self.flagged ^= {(x, y)}
 
     def get_input(self):
         """Checks the validity of entered coordinates."""
         while True:
             try:
                 x, y = map(int, input("Enter coordinates (x y): ").split())
-                if not self.is_valid_coordinate(x, y):
+                if not self._is_valid_coordinate(x, y):
                     print("Invalid coordinates. Try again.")
                     continue
                 return x, y
@@ -115,23 +113,21 @@ class Minesweeper:
 
 class GameStatistics:
     def __init__(self):
-        self.total = 0
-        self.wins = 0
-        self.losses = 0
+        self.total_games = self.win_games = self.loss_games = 0
 
     def update_statistics(self, won):
         """Updates game statistics after a match."""
-        self.total += 1
+        self.total_games += 1
         if won:
-            self.wins += 1
+            self.win_games += 1
         else:
-            self.losses += 1
+            self.loss_games += 1
 
     def print_statistics(self):
         """Prints game statistics."""
-        print(f"Total games played: {self.total}")
-        print(f"Games won: {self.wins}")
-        print(f"Games lost: {self.losses}")
+        print(f"Total games played: {self.total_games}")
+        print(f"Games won: {self.win_games}")
+        print(f"Games lost: {self.loss_games}")
 
 
 class GameMenu:
@@ -163,4 +159,4 @@ class GameMenu:
         mines = int(input("Enter the number of mines: ").strip())
         game = Minesweeper(size, mines)
         game.play()
-        self.stats.update_statistics(game.game_over and len(game.revealed) == (game.board_size ** 2 - game.number_of_mines))
+        self.stats.update_statistics(not game.game_over and len(game.revealed) == size**2 - mines)
