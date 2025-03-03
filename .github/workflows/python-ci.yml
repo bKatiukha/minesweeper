@@ -60,4 +60,4 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=your_project --cov-report=term-missing
+          pytest --cov=minesweeper --cov-report=term-missing
