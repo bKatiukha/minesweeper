@@ -25,3 +25,17 @@ jobs:
       with:
         name: coverage-report
         path: coverage.xml
+
+  deploy:
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+
+        - name: Trigger Render Deploy
+          run: |
+            curl -X POST "https://api.render.com/deploy/<YOUR_RENDER_SERVICE_ID>" \
+              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+              -H "Accept: application/json" \
+              -H "Content-Type: application/json"
