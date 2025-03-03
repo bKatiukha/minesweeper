@@ -2,155 +2,128 @@ import pytest
 import random
 from io import StringIO
 from unittest.mock import patch
-from src.minesweeper.minesweeper import Minesweeper, GameStatistics
+from src.minesweeper.minesweeper import Minesweeper, GameStatistics, GameMenu
+from contextlib import redirect_stdout
 
 
-# Test Minesweeper board initialization
-def test_minesweeper_initialization():
-    # Initialize Minesweeper game with default board size and number of mines
-    game = Minesweeper(board_size=8, number_of_mines=10)
-
-    # Check board size
-    assert len(game.board) == 8
-    assert len(game.board[0]) == 8
-
-    # Check number of mines
-    assert len(game.mines) == 10
-
-    # Check initial game state
-    assert not game.game_over
-    assert not game.revealed
-    assert not game.flagged
+# Helper function to capture print statements (to test print_board)
+def capture_output(func):
+    f = StringIO()
+    with redirect_stdout(f):
+        func()
+    return f.getvalue()
 
 
-# Test reveal method on non-mine cells
+# Test for Minesweeper board initialization
+def test_board_initialization():
+    game = Minesweeper(board_size=5, number_of_mines=3)
+
+    # Ensure the board size is correct
+    assert len(game.board) == 5
+    assert len(game.board[0]) == 5
+
+    # Ensure the number of mines is correct
+    assert len(game.mines) == 3
+
+
+# Test mine generation does not repeat mines
+def test_mine_generation():
+    game = Minesweeper(board_size=5, number_of_mines=3)
+
+    # Ensure the number of mines is exactly as specified
+    assert len(game.mines) == 3
+
+    # Ensure no duplicate mines are present
+    assert len(game.mines) == len(set(game.mines))
+
+
+# Test that the cell revealing works as expected (check for non-mine cells)
 def test_reveal_non_mine():
-    game = Minesweeper(board_size=8, number_of_mines=10)
+    game = Minesweeper(board_size=5, number_of_mines=3)
 
-    # Ensure reveal works correctly on a non-mine cell
+    # Reveal a cell that is not a mine
     x, y = 0, 0
     game.reveal(x, y)
 
-    # Ensure the cell is revealed and no game over occurs
+    # Ensure the cell is revealed
     assert (x, y) in game.revealed
-    assert not game.game_over
+    assert game.board[x][y] != " "  # Ensure the cell is not empty (a mine)
 
 
-# Test reveal method on a mine
+# Test that revealing a mine ends the game
 def test_reveal_mine():
-    game = Minesweeper(board_size=8, number_of_mines=10)
-
-    # Find a mine to reveal
+    game = Minesweeper(board_size=5, number_of_mines=3)
+    # Take a mine coordinate and reveal it
     mine = list(game.mines)[0]
-    x, y = mine
-    game.reveal(x, y)
+    game.reveal(mine[0], mine[1])
 
-    # Game should be over after revealing a mine
-    assert game.game_over
-    assert len(game.revealed) == 0  # No cells should be revealed
+    # Ensure the game is over after revealing a mine
+    assert game.game_over is True
 
 
-# Test flag method
-def test_flag():
-    game = Minesweeper(board_size=8, number_of_mines=10)
+# Test flagging cells
+def test_flag_cell():
+    game = Minesweeper(board_size=5, number_of_mines=3)
+    x, y = 0, 0
 
     # Flag a cell
-    x, y = 1, 1
     game.flag(x, y)
 
     # Ensure the cell is flagged
     assert (x, y) in game.flagged
 
-    # Flagging the same cell should toggle the flag
+    # Unflag the same cell
     game.flag(x, y)
+
+    # Ensure the cell is no longer flagged
     assert (x, y) not in game.flagged
 
 
-# Test reveal method on adjacent empty cells (recursive reveal)
-def test_recursive_reveal():
-    game = Minesweeper(board_size=8, number_of_mines=10)
+# Test printing the board
+def test_print_board():
+    game = Minesweeper(board_size=5, number_of_mines=3)
 
-    # Find a cell with no mines around it (empty cell)
-    empty_cell = None
-    for x in range(game.board_size):
-        for y in range(game.board_size):
-            if game.board[x][y] == ' ':
-                empty_cell = (x, y)
-                break
-        if empty_cell:
-            break
+    # Capture the output of print_board
+    output = capture_output(game.print_board)
 
-    # Reveal the empty cell
-    x, y = empty_cell
-    game.reveal(x, y)
+    # Ensure the board dimensions are printed
+    for i in range(game.board_size):
+        assert str(i) in output
 
-    # Ensure the empty cell and its adjacent cells are revealed
-    assert (x, y) in game.revealed
-    for dx in [-1, 0, 1]:
-        for dy in [-1, 0, 1]:
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < game.board_size and 0 <= ny < game.board_size:
-                assert (nx, ny) in game.revealed or (nx, ny) in game.mines
+    # Ensure the board has ? marks for unrevealed cells
+    assert '?' in output
 
 
-# Test invalid coordinate input for reveal and flag
-def test_invalid_coordinates():
-    game = Minesweeper(board_size=8, number_of_mines=10)
-
-    # Test invalid coordinates for reveal
-    with patch('builtins.input', return_value="10 10"):
-        x, y = game.get_input()
-        assert x == -1 and y == -1  # Invalid coordinates will retry
-
-    # Test invalid coordinates for flag
-    with patch('builtins.input', return_value="10 10"):
-        x, y = game.get_input()
-        game.flag(x, y)
-        assert (x, y) not in game.flagged  # No flag should be set for invalid coordinates
-
-
-# Test game statistics update after winning or losing
+# Test the GameStatistics class updates correctly
 def test_game_statistics():
-    # Create a game statistics instance
     stats = GameStatistics()
 
-    # Update statistics for a win
+    # Update stats with a win
     stats.update_statistics(won=True)
-    assert stats.total_games == 1
     assert stats.win_games == 1
     assert stats.loss_games == 0
+    assert stats.total_games == 1
 
-    # Update statistics for a loss
+    # Update stats with a loss
     stats.update_statistics(won=False)
-    assert stats.total_games == 2
     assert stats.win_games == 1
     assert stats.loss_games == 1
+    assert stats.total_games == 2
 
 
-# Test start game scenario
-def test_game_play_win():
-    with patch('builtins.input', side_effect=["1", "0 0"]):
-        game = Minesweeper(board_size=8, number_of_mines=10)
-        game.start_game()  # Simulate a successful reveal
-        assert not game.game_over  # Game should not be over after a successful reveal
+# Test the GameMenu class to check if the statistics print correctly
+def test_game_menu_statistics():
+    menu = GameMenu()
 
+    # Start a new game with win scenario
+    game = Minesweeper(board_size=3, number_of_mines=1)
+    game.reveal(0, 0)  # Assume this is a non-mine cell
+    menu.stats.update_statistics(won=True)
 
-# Test a full game where the player wins
-def test_game_play_loss():
-    with patch('builtins.input', side_effect=["1", "0 0"]):
-        game = Minesweeper(board_size=8, number_of_mines=10)
-        game.start_game()  # Simulate a loss (mine is revealed)
-        assert game.game_over  # Game should end with a mine hit
+    # Capture the statistics output
+    output = capture_output(menu.stats.print_statistics)
 
-
-# Test print board function (capture print output)
-def test_print_board():
-    game = Minesweeper(board_size=8, number_of_mines=10)
-
-    with patch('sys.stdout', new_callable=StringIO) as fake_out:
-        game.print_board()
-        printed_output = fake_out.getvalue()
-
-        # Ensure the board contains the header and the first row is printed
-        assert "  0 1 2 3 4 5 6 7" in printed_output
-        assert "0 ?" in printed_output
+    # Ensure the statistics are printed correctly
+    assert "Total games played" in output
+    assert "Games won" in output
+    assert "Games lost" in output

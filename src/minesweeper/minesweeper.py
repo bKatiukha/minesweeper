@@ -47,23 +47,32 @@ class Minesweeper:
             print(" ".join(row))
 
     def reveal(self, x, y):
-        """Reveals a cell."""
+        """Reveals a cell without recursion (iterative approach)."""
         if (x, y) in self.revealed or (x, y) in self.flagged:
             return
         if (x, y) in self.mines:
             self.game_over = True
             return
-        self.revealed.add((x, y))
-        if self.board[x][y] == ' ':
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
-                    nx, ny = x + dx, y + dy
-                    if self._is_valid_coordinate(nx, ny):
-                        self.reveal(nx, ny)
+
+        # Use a stack to reveal cells iteratively
+        stack = [(x, y)]
+        while stack:
+            cx, cy = stack.pop()
+            if (cx, cy) not in self.revealed:
+                self.revealed.add((cx, cy))
+                if self.board[cx][cy] == ' ':
+                    for dx in [-1, 0, 1]:
+                        for dy in [-1, 0, 1]:
+                            nx, ny = cx + dx, cy + dy
+                            if self._is_valid_coordinate(nx, ny):
+                                stack.append((nx, ny))
 
     def flag(self, x, y):
         if (x, y) not in self.revealed:
-            self.flagged ^= {(x, y)}
+            if (x, y) in self.flagged:
+                self.flagged.remove((x, y))
+            else:
+                self.flagged.add((x, y))
 
     def get_input(self):
         """Checks the validity of entered coordinates."""
@@ -79,7 +88,7 @@ class Minesweeper:
                 continue
 
     def play(self):
-        """Main game loop (too long function)."""
+        """Main game loop."""
         while not self.game_over:
             self.print_board()
             print("1. Reveal a cell")
@@ -88,12 +97,12 @@ class Minesweeper:
 
             if action == "1":
                 self.start_game()
-                break
             elif action == "2":
                 self.view_statistics()
             else:
                 print("Invalid action. Try again.")
 
+            # Check for win condition: revealed cells are all non-mines
             if len(self.revealed) == (self.board_size ** 2 - self.number_of_mines):
                 print('Congratulations! You won!')
                 self.print_board()
@@ -159,4 +168,6 @@ class GameMenu:
         mines = int(input("Enter the number of mines: ").strip())
         game = Minesweeper(size, mines)
         game.play()
-        self.stats.update_statistics(not game.game_over and len(game.revealed) == size**2 - mines)
+
+        # Update statistics based on game result
+        self.stats.update_statistics(won=not game.game_over and len(game.revealed) == size ** 2 - mines)
