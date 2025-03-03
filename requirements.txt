@@ -2,4 +2,3 @@ matplotlib
 pillow
 opencv-python
 numpy
-cv2

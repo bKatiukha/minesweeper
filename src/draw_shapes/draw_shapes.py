@@ -1,6 +1,4 @@
 import matplotlib.pyplot as plt
-import cv2
-import numpy as np
 from PIL import Image, ImageDraw
 
 
@@ -22,11 +20,3 @@ def draw_rectangle():
     draw.rectangle([50, 50, 150, 150], outline='red', width=5)
     img.show()
 
-
-def draw_line():
-    """Draws a line using OpenCV."""
-    img = np.ones((200, 200, 3), dtype=np.uint8) * 255  # White image
-    cv2.line(img, (50, 50), (150, 150), (0, 255, 0), 3)  # Green line
-    cv2.imshow('Line', img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
